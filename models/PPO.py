@@ -53,7 +53,7 @@ class PPO():
         self.epsilon = epsilon
         self.device = device
 
-    def get_action(self, state, mask):
+    def get_action(self, state, action_space, mask):
         state = torch.tensor(
             state, dtype=torch.float32, device=self.device)
         action_prob = self.actor(state)
@@ -61,7 +61,7 @@ class PPO():
             torch.tensor(mask, dtype=torch.float32, device=self.device)
         action = torch.argmax(action_prob_mix).item()
         if mask[action] == 0:
-            raise ValueError("Invalid distribution")
+            action = self.get_action_random(action_space, mask)
         return action
 
     def get_action_random(self, action_space, mask):

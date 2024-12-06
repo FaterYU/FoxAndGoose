@@ -68,11 +68,12 @@ for episode in range(num_episodes):
             break
         role = env.role
         if role == "fox":
-            if 1:
+            if np.random.rand() < 0.5:
                 action = fox_ppo.get_action_random(
                     env.fox_action_space, env.fox_mask)
             else:
-                action = fox_ppo.get_action(state, env.fox_mask)
+                action = fox_ppo.get_action(
+                    state, env.fox_action_space, env.fox_mask)
             next_state, reward, done, winner = env.step(action)
             fox_transition_dict["states"].append(state)
             fox_transition_dict["actions"].append(action)
@@ -81,11 +82,12 @@ for episode in range(num_episodes):
             fox_transition_dict["dones"].append(done)
             fox_reward += reward
         elif role == "goose":
-            if 1:
+            if np.random.rand() < 0.5:
                 action = goose_ppo.get_action_random(
                     env.goose_action_space, env.goose_mask)
             else:
-                action = goose_ppo.get_action(state, env.goose_mask)
+                action = goose_ppo.get_action(state, env.goose_action_space,
+                                              env.goose_mask)
             next_state, reward, done, winner = env.step(action)
             goose_transition_dict["states"].append(state)
             goose_transition_dict["actions"].append(action)

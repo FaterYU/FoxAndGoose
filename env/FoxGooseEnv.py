@@ -145,9 +145,9 @@ class FoxGooseEnv(gym.Env):
 
     def reward(self):
         if self.role == "fox":
-            return np.count_nonzero(self.fox_mask) * 0.1 + len(self.goose_location) * -0.1
+            return np.count_nonzero(self.fox_mask) * 0.1 + len(self.goose_location) * -0.02
         elif self.role == "goose":
-            return np.count_nonzero(self.goose_mask) * -0.1 + len(self.goose_location) * 0.1
+            return np.count_nonzero(self.goose_mask) * -0.02 + len(self.goose_location) * 0.1
 
     def get_binary_state(self, state):
         binary_state = []
