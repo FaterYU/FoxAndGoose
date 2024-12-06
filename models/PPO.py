@@ -34,8 +34,7 @@ class ValueNet(nn.Module):
 
 
 class PPO():
-    def __init__(self, env, n_state, n_hidden, n_action, epochs, actor_lr=1e-4, critic_lr=1e-4, lmbda=0.95, eps=0.2, gamma=0.99, epsilon=0.2, device="cuda"):
-        self.env = env
+    def __init__(self, n_state, n_hidden, n_action, epochs, actor_lr=1e-4, critic_lr=1e-4, lmbda=0.95, eps=0.2, gamma=0.99, epsilon=0.2, device="cuda"):
 
         self.actor = PolicyNet(n_state, n_hidden, n_action)
         self.actor.to(device)
@@ -54,35 +53,20 @@ class PPO():
         self.epsilon = epsilon
         self.device = device
 
-    def get_action(self, state):
-        if self.env.role == "fox":
-            # return self.env.fox_action_space.sample(self.env.fox_mask)
-            state = torch.tensor(
-                state, dtype=torch.float32, device=self.device)
-            action_prob = self.actor(state)
-            action_prob_mix = action_prob * torch.tensor(
-                self.env.fox_mask, dtype=torch.float32, device=self.device)
-            action = torch.argmax(action_prob_mix).item()
-            return action
-        elif self.env.role == "goose":
-            # return self.env.goose_action_space.sample(self.env.goose_mask)
-            state = torch.tensor(
-                state, dtype=torch.float32, device=self.device)
-            action_prob = self.actor(state)
-            action_prob_mix = action_prob * torch.tensor(
-                self.env.goose_mask, dtype=torch.float32, device=self.device)
-            action = torch.argmax(action_prob_mix).item()
-            return action
-        else:
-            raise ValueError("invalid role")
+    def get_action(self, state, mask):
+        state = torch.tensor(
+            state, dtype=torch.float32, device=self.device)
+        action_prob = self.actor(state)
+        action_prob_mix = action_prob * \
+            torch.tensor(mask, dtype=torch.float32, device=self.device)
+        action = torch.argmax(action_prob_mix).item()
+        if mask[action] == 0:
+            raise ValueError("Invalid distribution")
+        return action
 
-    def get_action_random(self):
-        if self.env.role == "fox":
-            return self.env.fox_action_space.sample(self.env.fox_mask)
-        elif self.env.role == "goose":
-            return self.env.goose_action_space.sample(self.env.goose_mask)
-        else:
-            raise ValueError("invalid role")
+    def get_action_random(self, action_space, mask):
+        action = action_space.sample(mask)
+        return action
 
     def train(self, transition_dict):
         # 提取数据集

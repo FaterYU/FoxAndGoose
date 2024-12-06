@@ -110,7 +110,6 @@ class GridRule():
         return result
 
     def get_fox_mask(self, state, location, jump=False):
-        # TODO: bug to fix
         next_space = self.fox_rule[location[0]*7+location[1]]
         mask = [0] * 33
         for move in next_space:

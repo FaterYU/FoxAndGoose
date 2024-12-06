@@ -90,10 +90,8 @@ class FoxGooseEnv(gym.Env):
                 self.state[self.fox_location[0]][self.fox_location[1]] = '.'
                 self.fox_location = (
                     self.fox_location[0] + move[0], self.fox_location[1] + move[1])
-                # TODO: bug to fix
                 self.state[self.fox_location[0]
                            ][self.fox_location[1]] = 'F'
-
                 if not self.has_next_step() or not self.fox_jump:
                     self.role = "goose"
                     self.fox_jump = False
