@@ -1,5 +1,6 @@
 import gymnasium as gym
 import numpy as np
+import copy
 from env.GridRule import GridRule
 
 
@@ -72,6 +73,7 @@ class FoxGooseEnv(gym.Env):
         return self.get_binary_state(self.state)
 
     def step(self, action):
+        now_role = self.role
         if self.role == "fox":
             move = self._fox_action_to_move[action]
             if move == (0, 0):
@@ -117,8 +119,7 @@ class FoxGooseEnv(gym.Env):
             self.state, self.goose_location)
 
         done, winner = self.is_done()
-
-        return self.get_binary_state(self.state), self.reward(), done, {"winner": winner}
+        return self.get_binary_state(self.state), self.reward(now_role), done, {"winner": winner}
 
     def render(self, mode='human'):
         print(
@@ -143,11 +144,60 @@ class FoxGooseEnv(gym.Env):
             return True, "fox"
         return False, None
 
-    def reward(self):
-        if self.role == "fox":
-            return np.count_nonzero(self.fox_mask) * 0.1 + len(self.goose_location) * -0.02
-        elif self.role == "goose":
-            return np.count_nonzero(self.goose_mask) * -0.02 + len(self.goose_location) * 0.1
+    def reward(self, role=None):
+        if role == "fox":
+            return self.fox_reward()
+        elif role == "goose":
+            return self.goose_reward()
+
+    def fox_reward(self):
+        masks = []
+        reward = 0
+        for i in range(len(self.fox_mask)):
+            if self.fox_mask[i] == 1:
+                action = self._fox_action_to_move[i]
+                location = (self.fox_location[0] + action[0],
+                            self.fox_location[1] + action[1])
+                mask = self.grid_rule.get_fox_mask(self.state, location)
+                reward += np.sum(mask > 1)+np.sum(mask > 0)*0.5
+                masks.append(mask)
+        reward += np.count_nonzero(self.fox_mask) * 0.5 + \
+            np.sum(self.fox_mask > 1) + 10 / (len(self.goose_location)+1)
+        return reward
+
+    def goose_reward(self):
+        masks = []
+        reward = 0
+        for i in range(len(self.goose_mask)):
+            if self.goose_mask[i] == 1:
+                goose_action = self._goose_action_to_move[i]
+                goose_idx = list(goose_action.keys())[0]
+                move = goose_action[goose_idx]
+                state = copy.deepcopy(self.state)
+                goose_location = copy.deepcopy(self.goose_location)
+                state[goose_location[goose_idx][0]
+                      ][goose_location[goose_idx][1]] = '.'
+                goose_location[goose_idx] = (
+                    goose_location[goose_idx][0] + move[0], goose_location[goose_idx][1] + move[1])
+                state[goose_location[goose_idx][0]
+                      ][goose_location[goose_idx][1]] = 'G'
+                # mask = self.grid_rule.get_goose_mask(state, goose_location)
+                mask = self.grid_rule.get_fox_mask(state, self.fox_location)
+                masks.append(mask)
+                reward += 4 / (np.sum(mask > 1)+1)+1/(np.sum(mask > 0)+1)
+        x_dis, y_dis, center_dis = 0, 0, 0
+        for g in self.goose_location:
+            x_dis += g[0]
+            y_dis += g[1]
+        x_dis /= len(self.goose_location)
+        y_dis /= len(self.goose_location)
+        for g in self.goose_location:
+            center_dis += np.sqrt((g[0]-x_dis)**2+(g[1]-y_dis)**2)
+        center_dis /= len(self.goose_location)
+        reward += 1/center_dis
+        reward += 2 / (np.sum(self.fox_mask > 1)+1) + \
+            len(self.goose_location) * 0.2
+        return reward
 
     def get_binary_state(self, state):
         binary_state = []

@@ -24,6 +24,12 @@ class GridRule():
             (-1, 1)  # ↗
         ]
         self._fox_base_multi = [1, 2, 4, 6]
+        self._fox_multi_check = [
+            [],
+            [],
+            [1, 3],
+            [1, 2, 4, 5]
+        ]
 
         self.fox_rule = {
             #            →  ↘ ↓  ↙ ←  ↖  ↑  ↗
@@ -118,6 +124,13 @@ class GridRule():
                     max(abs(move[0]), abs(move[1])))
                 base = self._base_move.index(
                     (move[0]//self._fox_base_multi[multi], move[1]//self._fox_base_multi[multi]))
+                valid = True
+                for i in self._fox_multi_check[multi]:
+                    if state[location[0]+self._base_move[base][0]*i][location[1]+self._base_move[base][1]*i] != '.':
+                        valid = False
+                        break
+                if not valid:
+                    continue
                 if multi > 0 and state[location[0]+move[0]//2][location[1]+move[1]//2] != 'G':
                     continue
                 if not jump:

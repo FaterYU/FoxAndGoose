@@ -4,6 +4,7 @@ from tqdm import tqdm
 import torch
 from torch import nn
 from torch.nn import functional as F
+import matplotlib.pyplot as plt
 
 
 class PolicyNet(nn.Module):
@@ -53,6 +54,11 @@ class PPO():
         self.epsilon = epsilon
         self.device = device
 
+        self.record = {
+            "actor_loss": [],
+            "critic_loss": []
+        }
+
     def get_action(self, state, action_space, mask):
         state = torch.tensor(
             state, dtype=torch.float32, device=self.device)
@@ -69,6 +75,10 @@ class PPO():
         return action
 
     def train(self, transition_dict):
+        self.record = {
+            "actor_loss": [],
+            "critic_loss": []
+        }
         # 提取数据集
         states = torch.tensor(
             transition_dict['states'], dtype=torch.float).to(self.device)
@@ -102,16 +112,20 @@ class PPO():
             advantage_list.append(advantage)
         # 正序
         advantage_list.reverse()
-        # numpy --> tensor [b,1]
-        advantage = torch.tensor(
-            advantage_list, dtype=torch.float).to(self.device)
+
+        # 将 advantage_list 转换为 NumPy 数组
+        advantage_array = np.array(advantage_list, dtype=np.float32)
+
+        # 将 NumPy 数组转换为 PyTorch 张量
+        advantage = torch.tensor(advantage_array).to(self.device)
 
         # 策略网络给出每个动作的概率，根据action得到当前时刻下该动作的概率
         old_log_probs = torch.log(self.actor(
             states).gather(1, actions)).detach()
 
         # 一组数据训练 epochs 轮
-        for _ in tqdm(range(self.epochs)):
+        # for _ in tqdm(range(self.epochs)):
+        for _ in range(self.epochs):
             # 每一轮更新一次策略网络预测的状态
             log_probs = torch.log(self.actor(states).gather(1, actions))
             # 新旧策略之间的比例
@@ -136,3 +150,33 @@ class PPO():
             # 梯度更新
             self.actor_optimizer.step()
             self.critic_optimizer.step()
+
+            # 记录损失
+            actor_loss = actor_loss.item()
+            critic_loss = critic_loss.item()
+            self.record["actor_loss"].append(actor_loss)
+            self.record["critic_loss"].append(critic_loss)
+
+    def save(self, path):
+        torch.save(self.actor.state_dict(), f"{path}/actor.pth")
+        torch.save(self.critic.state_dict(), f"{path}/critic.pth")
+        np.save(f"{path}/loss.npy", self.record)
+
+        # save loss figure
+        plt.figure()
+        plt.plot(self.record["actor_loss"], label="actor_loss")
+        plt.legend()
+        plt.savefig(f"{path}/loss_actor.png")
+        plt.close()
+
+        plt.figure()
+        plt.plot(self.record["critic_loss"], label="critic_loss")
+        plt.legend()
+        plt.savefig(f"{path}/loss_critic.png")
+        plt.close()
+
+    def load(self, path):
+        self.actor.load_state_dict(torch.load(f"{path}/actor.pth"))
+        self.critic.load_state_dict(torch.load(f"{path}/critic.pth"))
+        self.record = np.load(f"{path}/loss.npy", allow_pickle=True).item()
+        return self.record
