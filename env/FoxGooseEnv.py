@@ -115,6 +115,7 @@ class FoxGooseEnv(gym.Env):
         # update action space mask
         self.fox_mask = self.grid_rule.get_fox_mask(
             self.state, self.fox_location, self.fox_jump)
+        self.goose_location.sort()
         self.goose_mask = self.grid_rule.get_goose_mask(
             self.state, self.goose_location)
 
