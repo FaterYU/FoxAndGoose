@@ -10,14 +10,14 @@ import os
 import json
 
 save_threshold = 200
-num_episodes = 20000
+num_episodes = 30000
 gamma = 0.9
 actor_lr = 1e-3
 critic_lr = 1e-2
 epsilon = 0.2
 eps = 0.2
 lmdba = 0.95
-epochs = 500
+epochs = 300
 n_state = 33
 n_hidden = 128
 device = "cuda"
@@ -95,7 +95,7 @@ for episode in range(num_episodes):
         # else:
         #     print(f"Round {round_cnt}", end="\r")
         round_cnt += 1
-        if round_cnt > 1000:
+        if round_cnt > 2000:
             print("Round limit exceeded")
             break
         role = env.role
@@ -130,7 +130,7 @@ for episode in range(num_episodes):
         else:
             raise ValueError("invalid role")
         state = next_state
-    if round_cnt > 1000:
+    if round_cnt > 2000:
         continue
     # print("winner", winner)
 

@@ -152,52 +152,182 @@ class FoxGooseEnv(gym.Env):
             return self.goose_reward()
 
     def fox_reward(self):
-        masks = []
-        reward = 0
+        # goose 个数
+        reward_goose_count = np.log(
+            15 - len(self.goose_location) + 1) * (15 - len(self.goose_location))
+
+        # fox 当前可走的位置
+        reward_fox_space = 0
         for i in range(len(self.fox_mask)):
             if self.fox_mask[i] == 1:
-                action = self._fox_action_to_move[i]
-                location = (self.fox_location[0] + action[0],
-                            self.fox_location[1] + action[1])
-                mask = self.grid_rule.get_fox_mask(self.state, location)
-                reward += np.sum(mask > 1)+np.sum(mask > 0)*0.5
-                masks.append(mask)
-        reward += np.count_nonzero(self.fox_mask) * 0.5 + \
-            np.sum(self.fox_mask > 1) + 10 / (len(self.goose_location)+1)
+                reward_fox_space += 1
+
+        # fox 正在吃goose
+        reward_fox_eat = 1 if self.fox_jump else 0
+
+        # fox 可能到达的位置
+        # [[step, (x, y), is_eat], ...]
+        fox_search = [[0, self.fox_location, False]]
+        state_without_fox = copy.deepcopy(self.state)
+        state_without_fox[self.fox_location[0]][self.fox_location[1]] = '.'
+        search_idx = 0
+        step = 0
+        while search_idx < len(fox_search):
+            step = fox_search[search_idx][0] + 1
+            fox_mask = self.grid_rule.get_fox_mask(
+                state_without_fox, fox_search[search_idx][1])
+            fox_location = fox_search[search_idx][1]
+            for i in range(len(fox_mask)):
+                if fox_mask[i] == 1:
+                    fox_action = self._fox_action_to_move[i]
+                    location = (fox_location[0] + fox_action[0],
+                                fox_location[1] + fox_action[1])
+
+                    # check location not in fox_search
+                    is_in = False
+                    for item in fox_search:
+                        if item[1] == location:
+                            is_in = True
+                            break
+                    if is_in:
+                        continue
+
+                    if max(abs(fox_action[0]), abs(fox_action[1])) > 1:
+                        fox_search.append([step, location, True])
+                    elif state_without_fox[location[0]][location[1]] == '.':
+                        fox_search.append([step, location, False])
+                    else:
+                        continue
+            search_idx += 1
+
+         # 可以到达的位置越多，reward越高
+        reward_fox_space = len(fox_search)
+
+        # 统计潜在机会
+        reward_fox_opportunity = 0
+        for item in fox_search[1:]:
+            if item[2]:
+                # 潜在机会步数越大，reward越低
+                reward_fox_opportunity += 10 / item[0]
+            else:
+                reward_fox_opportunity -= 1 / item[0]
+
+        # 加权
+        reward = reward_goose_count * 2 + reward_fox_space + \
+            reward_fox_eat * 20 + reward_fox_opportunity
+
         return reward
 
     def goose_reward(self):
-        masks = []
         reward = 0
-        for i in range(len(self.goose_mask)):
-            if self.goose_mask[i] == 1:
-                goose_action = self._goose_action_to_move[i]
-                goose_idx = list(goose_action.keys())[0]
-                move = goose_action[goose_idx]
-                state = copy.deepcopy(self.state)
-                goose_location = copy.deepcopy(self.goose_location)
-                state[goose_location[goose_idx][0]
-                      ][goose_location[goose_idx][1]] = '.'
-                goose_location[goose_idx] = (
-                    goose_location[goose_idx][0] + move[0], goose_location[goose_idx][1] + move[1])
-                state[goose_location[goose_idx][0]
-                      ][goose_location[goose_idx][1]] = 'G'
-                # mask = self.grid_rule.get_goose_mask(state, goose_location)
-                mask = self.grid_rule.get_fox_mask(state, self.fox_location)
-                masks.append(mask)
-                reward += 4 / (np.sum(mask > 1)+1)+1/(np.sum(mask > 0)+1)
-        x_dis, y_dis, center_dis = 0, 0, 0
-        for g in self.goose_location:
-            x_dis += g[0]
-            y_dis += g[1]
-        x_dis /= len(self.goose_location)
-        y_dis /= len(self.goose_location)
-        for g in self.goose_location:
-            center_dis += np.sqrt((g[0]-x_dis)**2+(g[1]-y_dis)**2)
-        center_dis /= len(self.goose_location)
-        reward += 1/center_dis
-        reward += 2 / (np.sum(self.fox_mask > 1)+1) + \
-            len(self.goose_location) * 0.2
+        # 有危险，直接返回0
+        fox_mask = self.grid_rule.get_fox_mask(self.state, self.fox_location)
+        for i in range(len(fox_mask)):
+            if fox_mask[i] == 1:
+                fox_action = self._fox_action_to_move[i]
+                if max(abs(fox_action[0]), abs(fox_action[1])) > 1:
+                    return 0
+
+        # goose 个数
+        reward_goose_count = len(self.goose_location) - 3
+
+        # fox 可能到达的位置
+        # [[step, (x, y), is_eat], ...]
+        fox_search = [[0, self.fox_location, False]]
+        state_without_fox = copy.deepcopy(self.state)
+        state_without_fox[self.fox_location[0]][self.fox_location[1]] = '.'
+        search_idx = 0
+        step = 0
+        while search_idx < len(fox_search):
+            step = fox_search[search_idx][0] + 1
+            fox_mask = self.grid_rule.get_fox_mask(
+                state_without_fox, fox_search[search_idx][1])
+            fox_location = fox_search[search_idx][1]
+            for i in range(len(fox_mask)):
+                if fox_mask[i] == 1:
+                    fox_action = self._fox_action_to_move[i]
+                    location = (fox_location[0] + fox_action[0],
+                                fox_location[1] + fox_action[1])
+
+                    # check location not in fox_search
+                    is_in = False
+                    for item in fox_search:
+                        if item[1] == location:
+                            is_in = True
+                            break
+                    if is_in:
+                        continue
+
+                    if max(abs(fox_action[0]), abs(fox_action[1])) > 1:
+                        fox_search.append([step, location, True])
+                    elif state_without_fox[location[0]][location[1]] == '.':
+                        fox_search.append([step, location, False])
+                    else:
+                        continue
+            search_idx += 1
+
+        # 可以到达的位置越少，reward越高
+        reward_fox_space = 18 / (len(fox_search))
+
+        # 统计潜在风险
+        reward_goose_risk = 0
+        for item in fox_search[1:]:
+            if item[2]:
+                # 潜在风险步数越大，reward越低
+                reward_goose_risk -= 15 / item[0]
+            else:
+                reward_goose_risk += item[0] / 5
+
+        # fox可能到达的位置在goose以下，reward越低
+        reward_fox_prob_location = 0
+        for item in fox_search:
+            fox_location = item[1]
+            goose_row = [0] * 7
+            for goose in self.goose_location:
+                goose_row[goose[1]] = max(goose_row[goose[1]], goose[0])
+            goose_col = [[-1, 7]] * 7
+            for goose in self.goose_location:
+                goose_col[goose[0]][0] = max(goose_col[goose[0]][0], goose[1])
+                goose_col[goose[0]][1] = min(goose_col[goose[0]][1], goose[1])
+            if fox_location[0] < goose_row[fox_location[1]]:
+                reward_fox_prob_location -= 1
+            if goose_col[fox_location[0]][0] == -1 and goose_col[fox_location[0]][1] == 7:
+                continue
+            elif goose_col[fox_location[0]][0] == goose_col[fox_location[0]][1]:
+                if fox_location[1] == 0 or fox_location[1] == 6:
+                    reward_fox_prob_location -= 1
+            elif goose_col[fox_location[0]][0] < fox_location[1] or goose_col[fox_location[0]][1] > fox_location[1]:
+                reward_fox_prob_location -= 1
+
+        # 统计goose的连通块个数
+        reward_goose_connect = 0
+        goose_connect = []
+        for goose in self.goose_location:
+            is_in = False
+            for item in goose_connect:
+                if goose in item:
+                    is_in = True
+                    break
+            if is_in:
+                continue
+            connect = [goose]
+            goose_connect.append(connect)
+            search = [goose]
+            while len(search) > 0:
+                location = search.pop()
+                for move in self._base_move:
+                    new_location = (
+                        location[0] + move[0], location[1] + move[1])
+                    if new_location in self.goose_location and new_location not in connect:
+                        connect.append(new_location)
+                        search.append(new_location)
+        reward_goose_connect = - \
+            len(goose_connect) if len(goose_connect) != 1 else 1
+
+        # 加权
+        reward = reward_goose_count + reward_fox_space + \
+            reward_goose_risk*5 + reward_fox_prob_location + reward_goose_connect*10
+
         return reward
 
     def get_binary_state(self, state):

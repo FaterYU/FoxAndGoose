@@ -24,8 +24,8 @@ n_hidden = 128
 device = "cuda"
 reward_list = []
 
-model_episode = 12000
-runs = 0
+model_episode = 200
+runs = 3
 
 test_mode = {
     "fox": "weight",
