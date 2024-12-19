@@ -1,12 +1,10 @@
 import numpy as np
 from env.GridRule import GridRule
 from env.FoxGooseEnv import FoxGooseEnv
+from models.PPO import PPO
 
 
 class Goose():
-    def __init__(self):
-        self.grid_rule = GridRule()
-        self.env = FoxGooseEnv()
 
     def get_action(self, binary_state):
         state = self.binary_state2state(binary_state)

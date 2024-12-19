@@ -189,6 +189,7 @@ class FoxAndGoose:
                     move = player_2.play_fox(temp_board)
                     if not self.is_valid_move(True, move):
                         print("Illegal move by fox!")
+                        break
                 except Exception as e:
                     print("Exception caught for fox!")
                     print(e)
@@ -223,9 +224,9 @@ if __name__ == "__main__":
     game = FoxAndGoose()
 
     # Import the players
-    module = __import__("Team00")
+    module = __import__("Team05")
     player1 = getattr(module, "Player")()
-    module = __import__("Team00")
+    module = __import__("Team05")
     player2 = getattr(module, "Player")()
 
     # Play the game

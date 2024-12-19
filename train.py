@@ -10,8 +10,8 @@ import os
 import json
 
 save_threshold = 200
-num_episodes = 30000
-gamma = 0.9
+num_episodes = 10000
+gamma = 0.95
 actor_lr = 1e-3
 critic_lr = 1e-2
 epsilon = 0.2
@@ -51,7 +51,6 @@ with open(f"runs/{path_dir}/config.txt", "w") as f:
 
 print("Environment initialization")
 env = FoxGooseEnv()
-n_state = 33
 n_fox_action = env.fox_action_space.n
 n_goose_action = env.goose_action_space.n
 
@@ -88,14 +87,8 @@ for episode in range(num_episodes):
     round_cnt = 0
     winner = None
     while not done:
-        # if episode % 200 == 0 and episode > num_episodes / 2:
-        #     print(f"episode {episode}, round {round_cnt}")
-        #     env.render()
-        #     time.sleep(0.05)
-        # else:
-        #     print(f"Round {round_cnt}", end="\r")
         round_cnt += 1
-        if round_cnt > 2000:
+        if round_cnt > 1000:
             print("Round limit exceeded")
             break
         role = env.role
@@ -129,9 +122,12 @@ for episode in range(num_episodes):
             goose_reward += reward
         else:
             raise ValueError("invalid role")
+        # print(f"episode {episode}, round {round_cnt}")
+        # env.render()
+        # time.sleep(0.05)
         state = next_state
-    if round_cnt > 2000:
-        continue
+        if round_cnt > 1000:
+            continue
     # print("winner", winner)
 
     # train

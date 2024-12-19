@@ -29,14 +29,14 @@ class FoxGooseEnv(gym.Env):
             (-1, 0),  # ↑
             (-1, 1)  # ↗
         ]
-        self._fox_base_multi = [1, 2, 4, 6]
-        self.fox_action_space = gym.spaces.Discrete(33)
+        self._fox_base_multi = [1, 2]
+        self.fox_action_space = gym.spaces.Discrete(17)
         self._fox_action_to_move = {}
-        for i in range(4):
+        for i in range(2):
             for j in range(8):
                 self._fox_action_to_move[i * 8 + j] = (
                     self._base_move[j][0] * self._fox_base_multi[i], self._base_move[j][1] * self._fox_base_multi[i])
-        self._fox_action_to_move[32] = (0, 0)
+        self._fox_action_to_move[16] = (0, 0)
         self.goose_action_space = gym.spaces.Discrete(15 * 8)
         self._goose_action_to_move = {}
         for i in range(15):
