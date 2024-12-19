@@ -1,6 +1,6 @@
-time: Thu Dec 19 05:59:00 2024
-num_episodes: 30000
-gamma: 0.9
+time: Thu Dec 17 19:53:33 2024
+num_episodes: 10000
+gamma: 0.95
 actor_lr: 0.001
 critic_lr: 0.01
 epsilon: 0.2

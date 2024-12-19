@@ -9,8 +9,6 @@ import torch
 import os
 import json
 
-from strategy.goose import Goose
-goose = Goose()
 
 gamma = 0.9
 actor_lr = 1e-3
@@ -21,15 +19,15 @@ lmdba = 0.95
 epochs = 500
 n_state = 33
 n_hidden = 128
-device = "cuda"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 reward_list = []
 
-model_episode = 18600
-runs = 3
+model_episode = 3400
+runs = 5
 
 test_mode = {
     "fox": "weight",
-    "goose": "weight"
+    "goose": "random"
 }
 
 
@@ -74,7 +72,7 @@ winner = None
 while not done:
     print(f"round {round_cnt}")
     env.render()
-    time.sleep(0.1)
+    time.sleep(0.04)
     round_cnt += 1
     if round_cnt > 1000:
         print("Round limit exceeded")
@@ -84,6 +82,11 @@ while not done:
         if test_mode["fox"] == "weight":
             action = fox_ppo.get_action(
                 state, env.fox_action_space, env.fox_mask)
+            for i in range(len(env.fox_mask)):
+                if env.fox_mask[i] == 1:
+                    m = env._fox_action_to_move[i]
+                    if max(abs(m[0]), abs(m[1])) > 1:
+                        action = i
         else:
             action = fox_ppo.get_action_random(
                 env.fox_action_space, env.fox_mask)

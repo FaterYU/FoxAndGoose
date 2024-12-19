@@ -3,6 +3,7 @@
 
 from models.PPO import PPO
 from env.FoxGooseEnv import FoxGooseEnv
+import torch
 
 
 class Player:
@@ -22,9 +23,8 @@ class Player:
         lmdba = 0.95
         n_state = 33
         n_hidden = 128
-        device = "cuda"
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        n_state = 33
         n_fox_action = self.env.fox_action_space.n
         n_goose_action = self.env.goose_action_space.n
 
@@ -69,6 +69,11 @@ class Player:
                 board, cmd[-1], len(cmd) != 1)
             action = self.fox_ppo.get_action(
                 state, self.env.fox_action_space, mask)
+            for i in range(len(mask)):
+                if mask[i] == 1:
+                    m = self.env._fox_action_to_move[i]
+                    if max(abs(m[0]), abs(m[1])) > 1:
+                        action = i
             move = self.env._fox_action_to_move[action]
             if move == (0, 0):
                 break
@@ -94,6 +99,7 @@ class Player:
         # Get goose start position
         print("Goose plays next!")
 
+        # PPO
         state = self.env.get_binary_state(board)
         goose_location = self._get_goose_location(board)
         mask = self.env.grid_rule.get_goose_mask(board, goose_location)
@@ -107,19 +113,18 @@ class Player:
 
         cmd = [origin, target]
 
-        # # dogfall
-        # # TODO: test
-        # fox_location = self._get_fox_location(board)
-        # if fox_location[1] != 0:
-        #     if board[3][0] == 'G':
-        #         cmd = [[3, 0], [2, 0]]
-        #     elif board[2][0] == 'G':
-        #         cmd = [[2, 0], [3, 0]]
-        # else:
-        #     if board[3][6] == 'G':
-        #         cmd = [[3, 6], [2, 6]]
-        #     elif board[2][6] == 'G':
-        #         cmd = [[2, 6], [3, 6]]
+        # Hold the tie
+        fox_location = self._get_fox_location(board)
+        if fox_location[1] != 0:
+            if board[3][0] == 'G':
+                cmd = [[3, 0], [2, 0]]
+            elif board[2][0] == 'G':
+                cmd = [[2, 0], [3, 0]]
+        else:
+            if board[3][6] == 'G':
+                cmd = [[3, 6], [2, 6]]
+            elif board[2][6] == 'G':
+                cmd = [[2, 6], [3, 6]]
 
         return cmd
 

@@ -20,7 +20,7 @@ lmdba = 0.95
 epochs = 300
 n_state = 33
 n_hidden = 128
-device = "cuda"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 reward_list = []
 
 # save path
